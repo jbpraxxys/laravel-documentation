@@ -340,3 +340,274 @@ create a dataobject manager by copying block of code and change it to your selec
 
 10. On your terminal ***php artisan permission:update***
 
+11. Create your dedicated admin controller
+*App/Http/Controllers/admin* Create a plural form folder of your selected page, inside that folder is your **SampleController.php, SampleFetchController.php**
+
+#### SampleController.php
+```
+
+<?php
+
+namespace App\Http\Controllers\Admin\Events;
+
+use App\Http\Controllers\Controller;
+
+use Illuminate\Http\Request;
+
+use App\Http\Requests\Admin\Events\EventStoreRequest;
+
+use App\Models\Events\Event;
+
+class EventController extends Controller
+{
+    protected $indexView = 'admin.events.index';
+    protected $createView = 'admin.events.create';
+    protected $showView = 'admin.events.show';
+    protected $guard = 'admin';
+    
+    /**
+     * Display a listing of the resource.
+     */
+    public function index()
+    {
+        return view($this->indexView, [
+            //
+        ]);
+    }
+
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create()
+    {
+        return view($this->createView, [
+            //
+        ]);
+    }
+
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(EventStoreRequest $request)
+    {
+        $item = Event::store($request);
+
+        $message = "You have successfully created {$item->renderName()}";
+        $redirect = $item->renderShowUrl();
+
+        return response()->json([
+            'message' => $message,
+            'redirect' => $redirect,
+        ]);
+    }
+
+    /**
+     * Display the specified resource.
+     */
+    public function show(Request $request, $id, $slug = null)
+    {
+        $item = Event::withTrashed()->findOrFail($id);
+
+        if ($this->guard == 'guest' && !$slug) {
+            return redirect()->to($item->renderShowUrl('guest'));
+        }
+
+        return view($this->showView, [
+            'item' => $item,
+        ]);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(EventStoreRequest $request, $id)
+    {
+        $item = Event::withTrashed()->findOrFail($id);
+        $message = "You have successfully updated {$item->renderName()}";
+
+        $item = Event::store($request, $item);
+
+        return response()->json([
+            'message' => $message,
+        ]);
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function archive($id)
+    {
+        $item = Event::withTrashed()->findOrFail($id);
+        $item->archive();
+
+        return response()->json([
+            'message' => "You have successfully archived {$item->renderName()}",
+        ]);
+    }
+
+    /**
+     * Restore the specified resource from storage.
+     */
+    public function restore($id)
+    {
+        $item = Event::withTrashed()->findOrFail($id);
+        $item->unarchive();
+
+        return response()->json([
+            'message' => "You have successfully restored {$item->renderName()}",
+        ]);
+    }
+}
+
+
+```
+
+#### SampleFetchController.php
+```
+
+<?php
+
+namespace App\Http\Controllers\Admin\Events;
+
+use App\Extenders\Controllers\FetchController as Controller;
+
+use App\Models\Events\Event;
+
+class EventFetchController extends Controller
+{
+   /**
+    * Set object class of fetched data
+    *
+    * @return void
+    */
+   public function setObjectClass()
+   {
+       $this->class = new Event;
+   }
+
+   /**
+    * Custom filtering of query
+    *
+    * @param Illuminate\Support\Facades\DB $query
+    * @return Illuminate\Support\Facades\DB $query
+    */
+   public function filterQuery($query)
+   {
+       /**
+        * Queries
+        *
+        */
+        if($this->request->filled('archive')) {
+           $query = $query->onlyTrashed();
+        }
+
+       return $query;
+   }
+
+   /**
+    * Custom formatting of data
+    *
+    * @param Illuminate\Support\Collection $items
+    * @return array $result
+    */
+   public function formatData($items)
+   {
+       $result = [];
+
+       foreach($items as $item) {
+           $data = $this->formatItem($item);
+           array_push($result, $data);
+       }
+
+       return $result;
+   }
+
+   /**
+    * Build array data
+    *
+    * @param  App\Contracts\AvailablePosition
+    * @return array
+    */
+   protected function formatItem($item)
+   {
+       return [
+           'id' => $item->id,
+           'name' => $item->name,
+           'description' => $item->description,
+           'created_at' => $item->renderDate(),
+           'showUrl' => $item->renderShowUrl(),
+           'archiveUrl' => $item->renderArchiveUrl(),
+           'restoreUrl' => $item->renderRestoreUrl(),
+           'deleted_at' => $item->deleted_at,
+       ];
+   }
+
+   public function fetchView($id = null) {
+       $item = null;
+       $images = [];
+
+       if ($id) {
+           $item = Event::withTrashed()->findOrFail($id);
+           $item->archiveUrl = $item->renderArchiveUrl();
+           $item->restoreUrl = $item->renderRestoreUrl();
+           $item->resume_path = $item->renderFilePath('file_path');
+           // $item->careerUrl = $item->career->renderShowUrl();
+           // $item->educationLabel = $item->renderEducation();
+       }
+
+       return response()->json([
+           'item' => $item,
+           'images' => $images
+       ]);
+   }
+}
+
+```
+
+12. On your *resources/js/views/admin* create a plural folder of your selected page. Inside that folder create:
+	- SampleTable.vue
+	- SampleView.vue
+
+	``Pattern all your files from **samples** folder``
+
+
+13. On your *resources/views/admin* create a plural folder of your selected page. Inside that folder create:
+	- create.blade.php
+	- index.blade.php
+	- show.blade.php
+
+	``Pattern all your files from **samples** folder``
+
+14. On your *resources/views/admin/index.js* insert your Vue.component
+
+```
+
+Vue.component('sample-table', require('./samples/SampleTable.vue').default);
+Vue.component('sample-view', require('./samples/SampleView.vue').default);
+
+```
+
+
+15. On your *Routes/admin.php*
+- create a route for your admin **SampleController.php**
+
+```
+
+Route::namespace('Events')->group(function() {
+
+	Route::get('events', 'EventController@index')->name('events.index');
+	Route::get('events/create', 'EventController@create')->name('events.create');
+	Route::post('events/store', 'EventController@store')->name('events.store');
+	Route::get('events/show/{id}', 'EventController@show')->name('events.show');
+	Route::post('events/update/{id}', 'EventController@update')->name('events.update');
+	Route::post('events/{id}/archive', 'EventController@archive')->name('events.archive');
+	Route::post('events/{id}/restore', 'EventController@restore')->name('events.restore');
+
+	Route::post('events/fetch', 'EventFetchController@fetch')->name('events.fetch');
+	Route::post('events/fetch?archived=1', 'EventFetchController@fetch')->name('events.fetch-archive');
+	Route::post('events/fetch-item/{id?}', 'EventFetchController@fetchView')->name('events.fetch-item');
+	Route::post('events/fetch-pagination/{id}', 'EventFetchController@fetchPagePagination')->name('events.fetch-pagination');
+
+});
+
+```
