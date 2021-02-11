@@ -285,7 +285,7 @@ class eventstoreRequest extends FormRequest
 
 - This will act as your validation before updating the content of your database.
 
-8. On your *App/database/seeds/PermissionsTableSeeder.php*
+8. On your *Database/seeds/PermissionsTableSeeder.php*
 
 create a dataobject manager by copying block of code and change it to your selected page manager.
 

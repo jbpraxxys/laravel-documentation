@@ -30,7 +30,19 @@ You should have this block of code.
 >@endforeach
 
 ```
-``{{ $event->renderShowURL('guest') }}`` for href.
-``{{ $event->renderFilePath('file_path') }}`` for images
-``{!! str_limit($event->description, 200) !!}`` for htmleditor with limit
-``{{ $event->name }}`` for text
+- ``{{ $event->renderShowURL('guest') }}`` for href.
+- ``{{ $event->renderFilePath('file_path') }}`` for images
+- ``{!! str_limit($event->description, 200) !!}`` for htmleditor with limit
+- ``{{ $event->name }}`` for text
+
+3. For looping has many images
+
+```
+
+@foreach($event->getFiles() as $file)
+	<div class="image-hldr">
+		<img src="{{ $file['path'] }}" alt="">
+	</div>
+@endforeach
+
+```
